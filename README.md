@@ -134,6 +134,8 @@ Microband can install only the known Band 2 `2.0.5202.0` archive image. It verif
 
 Firmware installation remains inherently risky: interruption, radio failure, power loss, or an unexpected hardware state can permanently damage a Band. The app requires an explicit responsibility warning before starting. Keep the Band charging and the phone nearby until verification completes. Never alter the allowlisted package or bypass the checks.
 
+The firmware image itself, its unpacked sections, and a Ghidra decompilation are kept in a separate repository, not here: [Microsoft-Band-Firmware](https://github.com/VincentGuigui/Microsoft-Band-Firmware).
+
 ## Building and testing
 
 Run unit tests, lint, and a debug build:
@@ -193,7 +195,7 @@ Microband is an independent Android implementation informed by publicly availabl
 - [msband-lib-9th](https://github.com/MicrosoftBandDev/msband-lib-9th)
 - [MicrosoftBandDev/band-sdk](https://github.com/MicrosoftBandDev/band-sdk)
 - [MicrosoftBandDev/companion-app](https://github.com/MicrosoftBandDev/companion-app)
-- [msband](https://github.com/hire-marat/msband) -- the firmware container ("Envoy") format used in [`firmware/split_firmware.py`](firmware/split_firmware.py) is adapted from this project's schema.
+- [msband](https://github.com/hire-marat/msband) -- the firmware container ("Envoy") format used to unpack and decompile the firmware (see [Microsoft-Band-Firmware](https://github.com/VincentGuigui/Microsoft-Band-Firmware)) is adapted from this project's schema.
 
 These projects have different licenses. Contributors must respect the license and attribution requirements of any source they consult and should document the provenance of newly added protocol behavior.
 

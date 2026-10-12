@@ -613,8 +613,8 @@ class BandConnectionManager(
                         ?: notification.title?.takeIf { it.isNotBlank() }
                         ?: "New notification from ${notification.sourceLabel}",
                     timestamp = notification.timestamp,
-                    messageId = stableNotificationId(notification.notificationKey),
-                    replyAvailable = BandReplyRegistry.canReply(stableNotificationId(notification.notificationKey)),
+                    messageId = BandReplyRegistry.idFor(notification.notificationKey),
+                    replyAvailable = BandReplyRegistry.canReply(BandReplyRegistry.idFor(notification.notificationKey)),
                 )
                 BandNotificationKind.EMAIL -> protocol.showNotification(
                     title = notification.title?.takeIf { it.isNotBlank() }
@@ -625,7 +625,7 @@ class BandConnectionManager(
                 else -> protocol.showCall(
                     caller = notification.title?.takeIf { it.isNotBlank() }
                         ?: notification.sourceLabel.ifBlank { "Phone" },
-                    callId = stableNotificationId(notification.notificationKey),
+                    callId = BandReplyRegistry.idFor(notification.notificationKey),
                     timestamp = notification.timestamp,
                     type = when (kind) {
                         BandNotificationKind.INCOMING_CALL -> BandNotificationCodec.CallType.Incoming
@@ -722,8 +722,6 @@ class BandConnectionManager(
             ((bytes[offset + 3].toInt() and 0xFF) shl 8) or (bytes[offset + 2].toInt() and 0xFF)
         } else null
     }
-
-    private fun stableNotificationId(key: String): Int = (key.hashCode() and Int.MAX_VALUE).coerceAtLeast(1)
 
     fun geminiConfigured(): Boolean = geminiAssistant.isConfigured()
 

@@ -20,6 +20,7 @@ data class NotificationAppInfo(
 
 enum class BandNotificationKind {
     MESSAGE,
+    EMAIL,
     INCOMING_CALL,
     ANSWERED_CALL,
     MISSED_CALL,

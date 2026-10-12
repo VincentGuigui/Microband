@@ -43,4 +43,13 @@ class NotificationClassifierTest {
         assertEquals(BandNotificationKind.ANSWERED_CALL, c.callKind("call", null, true, "Marie", listOf("Raccrocher")))
         assertEquals(BandNotificationKind.MISSED_CALL, c.callKind("call", null, false, "Marie", emptyList()))
     }
+
+    @Test
+    fun emailIsKeptOffTheMessagesTile() {
+        val c = NotificationClassifier
+        assertEquals(BandNotificationKind.EMAIL, c.nonCallKind(NotificationCategory.GMAIL))
+        assertEquals(BandNotificationKind.EMAIL, c.nonCallKind(NotificationCategory.EMAIL))
+        assertEquals(BandNotificationKind.MESSAGE, c.nonCallKind(NotificationCategory.MESSAGES))
+        assertEquals(BandNotificationKind.MESSAGE, c.nonCallKind(NotificationCategory.OTHER))
+    }
 }

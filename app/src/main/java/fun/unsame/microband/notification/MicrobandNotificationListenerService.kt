@@ -117,7 +117,7 @@ class MicrobandNotificationListenerService : NotificationListenerService() {
         notification: BandPhoneNotification,
         category: NotificationCategory,
     ): BandNotificationKind {
-        if (category != NotificationCategory.CALLS) return BandNotificationKind.MESSAGE
+        if (category != NotificationCategory.CALLS) return NotificationClassifier.nonCallKind(category)
         val extras = posted.notification.extras
         return NotificationClassifier.callKind(
             androidCategory = posted.notification.category,

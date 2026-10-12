@@ -616,6 +616,12 @@ class BandConnectionManager(
                     messageId = stableNotificationId(notification.notificationKey),
                     replyAvailable = BandReplyRegistry.canReply(stableNotificationId(notification.notificationKey)),
                 )
+                BandNotificationKind.EMAIL -> protocol.showNotification(
+                    title = notification.title?.takeIf { it.isNotBlank() }
+                        ?: notification.sourceLabel.ifBlank { "Email" },
+                    body = notification.body?.takeIf { it.isNotBlank() }
+                        ?: notification.sourceLabel.ifBlank { "New email" },
+                )
                 else -> protocol.showCall(
                     caller = notification.title?.takeIf { it.isNotBlank() }
                         ?: notification.sourceLabel.ifBlank { "Phone" },
@@ -627,7 +633,7 @@ class BandConnectionManager(
                         BandNotificationKind.MISSED_CALL -> BandNotificationCodec.CallType.Missed
                         BandNotificationKind.HANGUP_CALL -> BandNotificationCodec.CallType.Hangup
                         BandNotificationKind.VOICEMAIL -> BandNotificationCodec.CallType.Voicemail
-                        BandNotificationKind.MESSAGE -> error("handled above")
+                        BandNotificationKind.MESSAGE, BandNotificationKind.EMAIL -> error("handled above")
                     },
                 )
             }

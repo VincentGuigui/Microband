@@ -28,6 +28,12 @@ object NotificationClassifier {
         }
     }
 
+    /** Email goes out as a pop-up so it never lands in (or bumps the counter of) the Band's Messages tile. */
+    fun nonCallKind(category: NotificationCategory): BandNotificationKind = when (category) {
+        NotificationCategory.GMAIL, NotificationCategory.EMAIL -> BandNotificationKind.EMAIL
+        else -> BandNotificationKind.MESSAGE
+    }
+
     /** Call type from platform signals first (category, CallStyle), then multilingual keywords as fallback. */
     fun callKind(
         androidCategory: String?,

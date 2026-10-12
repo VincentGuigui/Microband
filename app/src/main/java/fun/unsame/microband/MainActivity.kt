@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
                     onSetNotificationPackage = viewModel::setNotificationPackage,
                     onSetAllNotifications = viewModel::setAllNotifications,
                     onSetMaskNotificationsWhenLocked = viewModel::setMaskNotificationsWhenLocked,
+                    onSetEmailTilesEnabled = viewModel::setEmailTilesEnabled,
                     onSendTestNotification = viewModel::sendTestNotification,
                     onOpenBatteryOptimization = { viewModel.openBatteryOptimizationSettings(context) },
                     onRefreshHealth = viewModel::refreshHealthData,

@@ -23,7 +23,8 @@ object NotificationClassifier {
             androidCategory == "event" || "calendar" in packageLower || "calendar" in labelLower -> NotificationCategory.CALENDAR
             androidCategory == "msg" || isMessagingStyle || "messag" in packageLower || "messag" in labelLower ||
                 "whatsapp" in packageLower || "telegram" in packageLower || "signal" in packageLower -> NotificationCategory.MESSAGES
-            androidCategory == "email" || "mail" in packageLower || "mail" in labelLower -> NotificationCategory.EMAIL
+            androidCategory == "email" || "mail" in packageLower || "mail" in labelLower ||
+                "outlook" in packageLower || "outlook" in labelLower -> NotificationCategory.EMAIL
             else -> NotificationCategory.OTHER
         }
     }

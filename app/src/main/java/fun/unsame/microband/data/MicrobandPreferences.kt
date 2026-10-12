@@ -19,6 +19,7 @@ class MicrobandPreferences(private val context: Context) {
     val protocolLogging: Flow<Boolean> = context.dataStore.data.map { it[PROTOCOL_LOGGING] ?: false }
     val allNotificationsEnabled: Flow<Boolean> = context.dataStore.data.map { it[ALL_NOTIFICATIONS_ENABLED] ?: true }
     val maskNotificationsWhenLocked: Flow<Boolean> = context.dataStore.data.map { it[MASK_NOTIFICATIONS_WHEN_LOCKED] ?: true }
+    val emailTilesEnabled: Flow<Boolean> = context.dataStore.data.map { it[EMAIL_TILES_ENABLED] ?: true }
     val disabledNotificationPackages: Flow<Set<String>> = context.dataStore.data.map { it[DISABLED_NOTIFICATION_PACKAGES] ?: emptySet() }
     val notificationActivity: Flow<Map<String, NotificationAppActivity>> = context.dataStore.data.map {
         decodeNotificationActivity(it[NOTIFICATION_ACTIVITY].orEmpty())
@@ -49,6 +50,10 @@ class MicrobandPreferences(private val context: Context) {
 
     suspend fun setMaskNotificationsWhenLocked(enabled: Boolean) {
         context.dataStore.edit { it[MASK_NOTIFICATIONS_WHEN_LOCKED] = enabled }
+    }
+
+    suspend fun setEmailTilesEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[EMAIL_TILES_ENABLED] = enabled }
     }
 
     suspend fun setNotificationPackageEnabled(packageName: String, enabled: Boolean, knownPackages: Set<String>) {
@@ -103,6 +108,7 @@ class MicrobandPreferences(private val context: Context) {
         private val OOBE_STEP = stringPreferencesKey("oobe_step")
         private val ALL_NOTIFICATIONS_ENABLED = booleanPreferencesKey("all_notifications_enabled")
         private val MASK_NOTIFICATIONS_WHEN_LOCKED = booleanPreferencesKey("mask_notifications_when_locked")
+        private val EMAIL_TILES_ENABLED = booleanPreferencesKey("email_tiles_enabled")
         private val DISABLED_NOTIFICATION_PACKAGES = stringSetPreferencesKey("disabled_notification_packages")
         private val NOTIFICATION_ACTIVITY = stringSetPreferencesKey("notification_activity")
         private val THEME_ACCENT = intPreferencesKey("theme_accent")

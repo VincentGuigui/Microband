@@ -172,6 +172,7 @@ fun MicrobandApp(
     onSetNotificationPackage: (String, Boolean) -> Unit,
     onSetAllNotifications: (Boolean) -> Unit,
     onSetMaskNotificationsWhenLocked: (Boolean) -> Unit,
+    onSetEmailTilesEnabled: (Boolean) -> Unit,
     onSendTestNotification: () -> Unit,
     onOpenBatteryOptimization: () -> Unit,
     onRefreshHealth: () -> Unit,
@@ -264,6 +265,7 @@ fun MicrobandApp(
                     onSetNotificationPackage = onSetNotificationPackage,
                     onSetAllNotifications = onSetAllNotifications,
                     onSetMaskNotificationsWhenLocked = onSetMaskNotificationsWhenLocked,
+                    onSetEmailTilesEnabled = onSetEmailTilesEnabled,
                     onSendTestNotification = onSendTestNotification,
                     onOpenBatteryOptimization = onOpenBatteryOptimization,
                     onSetGeminiEnabled = onSetGeminiEnabled,
@@ -825,11 +827,13 @@ private fun NotificationSettingsSection(
     allEnabled: Boolean,
     disabledPackages: Set<String>,
     maskWhenLocked: Boolean,
+    emailTilesEnabled: Boolean,
     connected: Boolean,
     onOpenNotificationAccess: () -> Unit,
     onSetPackage: (String, Boolean) -> Unit,
     onSetAll: (Boolean) -> Unit,
     onSetMaskWhenLocked: (Boolean) -> Unit,
+    onSetEmailTilesEnabled: (Boolean) -> Unit,
     onSendTestNotification: () -> Unit,
     onOpenBatteryOptimization: () -> Unit,
 ) {
@@ -853,6 +857,13 @@ private fun NotificationSettingsSection(
                 headlineContent = { Text("Mask content when phone is locked") },
                 supportingContent = { Text("Replace the message body with a placeholder if your phone is locked when a notification arrives.") },
                 trailingContent = { Switch(maskWhenLocked, onCheckedChange = onSetMaskWhenLocked) },
+            )
+        }
+        Card(shape = RoundedCornerShape(20.dp)) {
+            ListItem(
+                headlineContent = { Text("One Band tile per email app") },
+                supportingContent = { Text("Create a Gmail, Outlook or generic email tile on the Band for each email app. When off, or if the Band has no free tile slot, emails show as a pop-up only.") },
+                trailingContent = { Switch(emailTilesEnabled, onCheckedChange = onSetEmailTilesEnabled) },
             )
         }
         Card(shape = RoundedCornerShape(20.dp)) {
@@ -1208,6 +1219,7 @@ private fun SettingsContainer(
     onSetNotificationPackage: (String, Boolean) -> Unit,
     onSetAllNotifications: (Boolean) -> Unit,
     onSetMaskNotificationsWhenLocked: (Boolean) -> Unit,
+    onSetEmailTilesEnabled: (Boolean) -> Unit,
     onSendTestNotification: () -> Unit,
     onOpenBatteryOptimization: () -> Unit,
     onSetGeminiEnabled: (Boolean) -> Unit,
@@ -1221,7 +1233,7 @@ private fun SettingsContainer(
     } else {
         SettingsScreen(
             state, onSetProtocolLogging, onOpenFirmwareArchive, onChooseFirmwarePackage, onStartFirmwareUpdate,
-            onOpenNotificationAccess, onSetNotificationPackage, onSetAllNotifications, onSetMaskNotificationsWhenLocked,
+            onOpenNotificationAccess, onSetNotificationPackage, onSetAllNotifications, onSetMaskNotificationsWhenLocked, onSetEmailTilesEnabled,
             onSendTestNotification, onOpenBatteryOptimization,
             onSetGeminiEnabled, onSaveGeminiKey, onClearGeminiKey,
             { developerOpen = true }, modifier,
@@ -1240,6 +1252,7 @@ private fun SettingsScreen(
     onSetNotificationPackage: (String, Boolean) -> Unit,
     onSetAllNotifications: (Boolean) -> Unit,
     onSetMaskNotificationsWhenLocked: (Boolean) -> Unit,
+    onSetEmailTilesEnabled: (Boolean) -> Unit,
     onSendTestNotification: () -> Unit,
     onOpenBatteryOptimization: () -> Unit,
     onSetGeminiEnabled: (Boolean) -> Unit,
@@ -1258,11 +1271,13 @@ private fun SettingsScreen(
                 state.allNotificationsEnabled,
                 state.disabledNotificationPackages,
                 state.maskNotificationsWhenLocked,
+                state.emailTilesEnabled,
                 state.connection is BandConnectionState.Connected,
                 onOpenNotificationAccess,
                 onSetNotificationPackage,
                 onSetAllNotifications,
                 onSetMaskNotificationsWhenLocked,
+                onSetEmailTilesEnabled,
                 onSendTestNotification,
                 onOpenBatteryOptimization,
             )

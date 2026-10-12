@@ -34,6 +34,7 @@ import com.unsame.microband.band.model.BandTileInfo
 import com.unsame.microband.notification.BandPhoneNotification
 import com.unsame.microband.notification.BandNotificationKind
 import com.unsame.microband.notification.BandReplyRegistry
+import com.unsame.microband.band.protocol.BandEmailTiles
 import com.unsame.microband.band.protocol.BandNotificationCodec
 import com.unsame.microband.band.protocol.BandPushCodec
 import com.unsame.microband.band.protocol.BandKeyboardCodec
@@ -616,12 +617,7 @@ class BandConnectionManager(
                     messageId = BandReplyRegistry.idFor(notification.notificationKey),
                     replyAvailable = BandReplyRegistry.canReply(BandReplyRegistry.idFor(notification.notificationKey)),
                 )
-                BandNotificationKind.EMAIL -> protocol.showNotification(
-                    title = notification.title?.takeIf { it.isNotBlank() }
-                        ?: notification.sourceLabel.ifBlank { "Email" },
-                    body = notification.body?.takeIf { it.isNotBlank() }
-                        ?: notification.sourceLabel.ifBlank { "New email" },
-                )
+                BandNotificationKind.EMAIL -> forwardEmail(notification)
                 else -> protocol.showCall(
                     caller = notification.title?.takeIf { it.isNotBlank() }
                         ?: notification.sourceLabel.ifBlank { "Phone" },
@@ -638,6 +634,24 @@ class BandConnectionManager(
                 )
             }
         } }.onFailure { mutableEvents.tryEmit("Notification forwarding failed: ${it.userMessage()}") }
+    }
+
+    /** Email goes to a per-app custom tile when the Band can hold one, otherwise to a plain pop-up. */
+    private suspend fun forwardEmail(notification: BandPhoneNotification) {
+        val sender = notification.title?.takeIf { it.isNotBlank() } ?: notification.sourceLabel.ifBlank { "Email" }
+        val body = notification.body?.takeIf { it.isNotBlank() } ?: notification.sourceLabel.ifBlank { "New email" }
+        val spec = BandEmailTiles.specFor(notification.sourcePackage, notification.sourceLabel)
+        val tileReady = preferences.emailTilesEnabled.first() && try {
+            protocol.ensureCustomTile(spec)
+        } catch (error: BandException.ProtocolStatus) {
+            mutableEvents.tryEmit("Could not create the ${spec.name} tile: ${error.userMessage()}")
+            false
+        }
+        if (tileReady) {
+            protocol.showTileMessage(spec.tileId, sender, body, notification.timestamp)
+        } else {
+            protocol.showNotification(sender, body)
+        }
     }
 
     fun setThemeColor(accent: Int) = scope.launch {

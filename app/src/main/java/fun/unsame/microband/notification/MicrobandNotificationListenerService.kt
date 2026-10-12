@@ -42,15 +42,19 @@ class MicrobandNotificationListenerService : NotificationListenerService() {
         val posted = notification ?: return
         if (posted.packageName == packageName || posted.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
         val normalized = normalize(posted)
-        posted.notification.actions.orEmpty().firstOrNull { action ->
+        val replyCandidates = posted.notification.actions.orEmpty().filter { action ->
             !action.remoteInputs.isNullOrEmpty() && action.actionIntent != null
-        }?.let { action ->
+        }
+        (replyCandidates.firstOrNull { it.semanticAction == Notification.Action.SEMANTIC_ACTION_REPLY }
+            ?: replyCandidates.firstOrNull())?.let { action ->
             BandReplyRegistry.register(posted.key, action.actionIntent, action.remoteInputs)
         }
         val category = NotificationClassifier.classify(
             posted.packageName,
             normalized.sourceLabel,
             posted.notification.category,
+            isMessagingStyle = posted.notification.extras.getString(Notification.EXTRA_TEMPLATE)
+                ?.endsWith("MessagingStyle") == true,
         )
         if (posted.isOngoing && category != NotificationCategory.CALLS) return
         val kind = deliveryKind(posted, normalized, category)
@@ -114,17 +118,14 @@ class MicrobandNotificationListenerService : NotificationListenerService() {
         category: NotificationCategory,
     ): BandNotificationKind {
         if (category != NotificationCategory.CALLS) return BandNotificationKind.MESSAGE
-        val text = listOfNotNull(notification.title, notification.body).joinToString(" ").lowercase()
-        return when {
-            "voicemail" in text -> BandNotificationKind.VOICEMAIL
-            "missed" in text -> BandNotificationKind.MISSED_CALL
-            posted.isOngoing && ("incoming" in text || "ringing" in text || posted.notification.actions.orEmpty().any {
-                val action = it.title?.toString()?.lowercase().orEmpty()
-                "answer" in action || "accept" in action
-            }) -> BandNotificationKind.INCOMING_CALL
-            posted.isOngoing -> BandNotificationKind.ANSWERED_CALL
-            else -> BandNotificationKind.MISSED_CALL
-        }
+        val extras = posted.notification.extras
+        return NotificationClassifier.callKind(
+            androidCategory = posted.notification.category,
+            callStyleType = if (extras.containsKey(Notification.EXTRA_CALL_TYPE)) extras.getInt(Notification.EXTRA_CALL_TYPE) else null,
+            isOngoing = posted.isOngoing,
+            text = listOfNotNull(notification.title, notification.body).joinToString(" "),
+            actionTitles = posted.notification.actions.orEmpty().mapNotNull { it.title?.toString() },
+        )
     }
 
     @Synchronized

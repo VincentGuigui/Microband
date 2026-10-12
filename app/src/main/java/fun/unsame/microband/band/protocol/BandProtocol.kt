@@ -14,6 +14,7 @@ import com.unsame.microband.band.transport.BandTransport
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.time.Instant
+import java.util.UUID
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.io.File
@@ -154,6 +155,56 @@ class BandProtocol(private val transport: BandTransport) {
                 transfer = payload,
                 arguments = BandPacketCodec.littleEndianInt(tiles.size),
                 timeoutMillis = 60_000,
+            )
+        }
+    }
+
+    /**
+     * Makes sure a tile owned by this app exists for [spec], creating it with its icons if needed.
+     * Returns false when the Band has no free tile slot.
+     */
+    suspend fun ensureCustomTile(spec: EmailTileSpec): Boolean {
+        val catalog = getTileCatalog()
+        val tile = BandTileCodec.customTile(spec.tileId, spec.name, BandEmailTiles.OWNER_ID, catalog.installed.size)
+        if (catalog.installed.any { it.id == tile.id }) return true
+        if (catalog.installed.size >= catalog.capacity) return false
+        val icons = BandEmailTiles.icons(spec.kind)
+        val guid = BandPacketCodec.guidLittleEndian(spec.tileId)
+        withFirmwareUiSync {
+            val register = icons.fold(guid + BandPacketCodec.littleEndianInt(icons.size)) { acc, icon ->
+                acc + BandTileIconCodec.encode(icon.width, icon.height, icon.alpha)
+            }
+            write(BandConstants.FACILITY_FIREBALL_APPS, 0, register, timeoutMillis = 60_000)
+            // Tile icon 0, badge icon 1, notification icon 1.
+            for ((code, index) in listOf(3 to 0, 5 to 1, 11 to 1)) {
+                write(BandConstants.FACILITY_FIREBALL_APPS, code, guid + BandPacketCodec.littleEndianInt(index), timeoutMillis = 60_000)
+            }
+            val tiles = catalog.installed + tile
+            write(
+                BandConstants.FACILITY_INSTALLED_APP_LIST,
+                1,
+                transfer = BandTileCodec.encode(tiles),
+                arguments = BandPacketCodec.littleEndianInt(tiles.size),
+                timeoutMillis = 60_000,
+            )
+        }
+        // Clears any stale page layouts, as the Band SDK does after adding a tile; best effort.
+        for (layout in 0 until 5) {
+            runCatching {
+                write(BandConstants.FACILITY_FIREBALL_PAGES, 1, guid + BandPacketCodec.littleEndianInt(layout), timeoutMillis = 60_000)
+            }
+        }
+        return true
+    }
+
+    suspend fun showTileMessage(tileId: UUID, title: String, body: String, timestamp: Instant) {
+        firmwareUiMutex.withLock {
+            val payload = BandNotificationCodec.tileMessage(tileId, title, body, timestamp)
+            write(
+                facility = BandConstants.FACILITY_NOTIFICATION,
+                code = 5,
+                transfer = payload,
+                arguments = BandNotificationCodec.commandArguments(payload.size, BandNotificationCodec.MESSAGING_MESSAGE_TYPE),
             )
         }
     }

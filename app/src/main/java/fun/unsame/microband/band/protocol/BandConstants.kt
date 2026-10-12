@@ -16,6 +16,7 @@ object BandConstants {
     const val FACILITY_OOBE = 0xAD
     const val FACILITY_FIREBALL_UI = 0xC3
     const val FACILITY_FIREBALL_APPS = 0xD3
+    const val FACILITY_FIREBALL_PAGES = 0xD5
     const val FACILITY_PROFILE = 0xC5
     const val FACILITY_SYSTEM_SETTINGS = 0xCA
     const val FACILITY_NOTIFICATION = 0xCC

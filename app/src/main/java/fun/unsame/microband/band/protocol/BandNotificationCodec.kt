@@ -62,6 +62,16 @@ object BandNotificationCodec {
         return output.toByteArray()
     }
 
+    /** A message for a custom tile: stored in the tile and shown as a pop-up. */
+    fun tileMessage(tileId: UUID, title: String, body: String, timestamp: Instant): ByteArray {
+        val output = ByteArrayOutputStream()
+        output.writeMessageField(0x0A, fileTime(timestamp))
+        output.writeMessageField(0x12, guid(tileId))
+        output.writeUtf8Field(0x2A, title, 40)
+        output.writeUtf8Field(0x32, body, 320)
+        return output.toByteArray()
+    }
+
     fun cortana(status: Int, message: String): ByteArray {
         val encoded = message.take(160).toByteArray(Charsets.UTF_16LE).copyOf(320)
         return BandPacketCodec.littleEndianShort(status) +

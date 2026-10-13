@@ -1,6 +1,8 @@
 package com.unsame.microband.notification
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NotificationClassifierTest {
@@ -51,5 +53,12 @@ class NotificationClassifierTest {
         assertEquals(BandNotificationKind.EMAIL, c.nonCallKind(NotificationCategory.EMAIL))
         assertEquals(BandNotificationKind.MESSAGE, c.nonCallKind(NotificationCategory.MESSAGES))
         assertEquals(BandNotificationKind.MESSAGE, c.nonCallKind(NotificationCategory.OTHER))
+    }
+
+    @Test
+    fun filtersMediaPlaybackEvenWhenNotificationIsNotOngoing() {
+        assertTrue(NotificationClassifier.isMediaPlayback("transport", false))
+        assertTrue(NotificationClassifier.isMediaPlayback(null, true))
+        assertFalse(NotificationClassifier.isMediaPlayback("msg", false))
     }
 }

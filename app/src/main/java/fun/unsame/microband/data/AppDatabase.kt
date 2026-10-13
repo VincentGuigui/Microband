@@ -41,6 +41,9 @@ interface PacketLogDao {
 
     @Query("DELETE FROM protocol_packet_log")
     suspend fun clear()
+
+    @Query("DELETE FROM protocol_packet_log WHERE id NOT IN (SELECT id FROM protocol_packet_log ORDER BY id DESC LIMIT :keep)")
+    suspend fun trim(keep: Int = 500)
 }
 
 @Entity(tableName = "health_snapshot")
@@ -90,12 +93,33 @@ interface HealthSnapshotDao {
 data class HealthDailyEntity(
     @PrimaryKey val localDate: String,
     val syncedAt: Long,
-    val steps: Long?,
-    val calories: Long?,
-    val distanceCentimeters: Long?,
-    val flightsAscended: Long?,
-    val elevationGainCentimeters: Long?,
-    val uvExposure: Long?,
+    val steps: Long? = null,
+    val calories: Long? = null,
+    val distanceCentimeters: Long? = null,
+    val flightsAscended: Long? = null,
+    val elevationGainCentimeters: Long? = null,
+    val uvExposure: Long? = null,
+    val runStartedAt: Long? = null,
+    val runEndedAt: Long? = null,
+    val runDuration: Long? = null,
+    val runDistance: Long? = null,
+    val runCalories: Long? = null,
+    val runAverageHeartRate: Long? = null,
+    val runMaximumHeartRate: Long? = null,
+    val workoutStartedAt: Long? = null,
+    val workoutEndedAt: Long? = null,
+    val workoutDuration: Long? = null,
+    val workoutCalories: Long? = null,
+    val workoutAverageHeartRate: Long? = null,
+    val workoutMaximumHeartRate: Long? = null,
+    val sleepStartedAt: Long? = null,
+    val sleepEndedAt: Long? = null,
+    val sleepDuration: Long? = null,
+    val sleepTimeAsleep: Long? = null,
+    val sleepTimesWokeUp: Long? = null,
+    val sleepCalories: Long? = null,
+    val sleepRestingHeartRate: Long? = null,
+    val sleepTimeToFallAsleep: Long? = null,
 )
 
 @Dao
@@ -103,9 +127,67 @@ interface HealthDailyDao {
     @Query("SELECT * FROM health_daily ORDER BY localDate DESC LIMIT 400")
     fun observeAll(): Flow<List<HealthDailyEntity>>
 
+    @Query("SELECT * FROM health_daily WHERE localDate = :localDate")
+    suspend fun get(localDate: String): HealthDailyEntity?
+
     @Upsert
     suspend fun upsert(day: HealthDailyEntity)
 }
+
+private fun activitySummary(
+    startedAt: Long?,
+    endedAt: Long?,
+    duration: Long?,
+    distanceCentimeters: Long?,
+    calories: Long?,
+    averageHeartRate: Long?,
+    maximumHeartRate: Long?,
+): BandActivitySummary? = duration?.let {
+    BandActivitySummary(
+        startedAt = startedAt?.let(Instant::ofEpochMilli),
+        endedAt = endedAt?.let(Instant::ofEpochMilli),
+        durationMillis = it,
+        distanceCentimeters = distanceCentimeters,
+        calories = calories ?: 0,
+        averageHeartRate = averageHeartRate ?: 0,
+        maximumHeartRate = maximumHeartRate ?: 0,
+    )
+}?.takeIf { it.isValid() }
+
+private fun sleepSummary(
+    startedAt: Long?,
+    endedAt: Long?,
+    duration: Long?,
+    timeAsleep: Long?,
+    timesWokeUp: Long?,
+    calories: Long?,
+    restingHeartRate: Long?,
+    timeToFallAsleep: Long?,
+): BandSleepSummary? = duration?.let {
+    BandSleepSummary(
+        startedAt = startedAt?.let(Instant::ofEpochMilli),
+        endedAt = endedAt?.let(Instant::ofEpochMilli),
+        durationMillis = it,
+        timeAsleepMillis = timeAsleep ?: 0,
+        timesWokeUp = timesWokeUp ?: 0,
+        calories = calories ?: 0,
+        restingHeartRate = restingHeartRate ?: 0,
+        timeToFallAsleepMillis = timeToFallAsleep ?: 0,
+    )
+}?.takeIf { it.isValid() }
+
+fun HealthDailyEntity.runSummary(): BandActivitySummary? = activitySummary(
+    runStartedAt, runEndedAt, runDuration, runDistance, runCalories, runAverageHeartRate, runMaximumHeartRate,
+)
+
+fun HealthDailyEntity.workoutSummary(): BandActivitySummary? = activitySummary(
+    workoutStartedAt, workoutEndedAt, workoutDuration, null, workoutCalories, workoutAverageHeartRate, workoutMaximumHeartRate,
+)
+
+fun HealthDailyEntity.sleepSummary(): BandSleepSummary? = sleepSummary(
+    sleepStartedAt, sleepEndedAt, sleepDuration, sleepTimeAsleep, sleepTimesWokeUp, sleepCalories,
+    sleepRestingHeartRate, sleepTimeToFallAsleep,
+)
 
 fun BandHealthSnapshot.toEntity() = HealthSnapshotEntity(
     syncedAt = syncedAt.toEpochMilli(),
@@ -139,41 +221,7 @@ fun BandHealthSnapshot.toEntity() = HealthSnapshotEntity(
     sleepTimeToFallAsleep = lastSleep?.timeToFallAsleepMillis,
 )
 
-fun HealthSnapshotEntity.toModel(): BandHealthSnapshot {
-    val run = runDuration?.let {
-        BandActivitySummary(
-            startedAt = runStartedAt?.let(Instant::ofEpochMilli),
-            endedAt = runEndedAt?.let(Instant::ofEpochMilli),
-            durationMillis = it,
-            distanceCentimeters = runDistance,
-            calories = runCalories ?: 0,
-            averageHeartRate = runAverageHeartRate ?: 0,
-            maximumHeartRate = runMaximumHeartRate ?: 0,
-        )
-    }?.takeIf { it.isValid() }
-    val workout = workoutDuration?.let {
-        BandActivitySummary(
-            startedAt = workoutStartedAt?.let(Instant::ofEpochMilli),
-            endedAt = workoutEndedAt?.let(Instant::ofEpochMilli),
-            durationMillis = it,
-            calories = workoutCalories ?: 0,
-            averageHeartRate = workoutAverageHeartRate ?: 0,
-            maximumHeartRate = workoutMaximumHeartRate ?: 0,
-        )
-    }?.takeIf { it.isValid() }
-    val sleep = sleepDuration?.let {
-        BandSleepSummary(
-            startedAt = sleepStartedAt?.let(Instant::ofEpochMilli),
-            endedAt = sleepEndedAt?.let(Instant::ofEpochMilli),
-            durationMillis = it,
-            timeAsleepMillis = sleepTimeAsleep ?: 0,
-            timesWokeUp = sleepTimesWokeUp ?: 0,
-            calories = sleepCalories ?: 0,
-            restingHeartRate = sleepRestingHeartRate ?: 0,
-            timeToFallAsleepMillis = sleepTimeToFallAsleep ?: 0,
-        )
-    }?.takeIf { it.isValid() }
-    return BandHealthSnapshot(
+fun HealthSnapshotEntity.toModel() = BandHealthSnapshot(
     syncedAt = Instant.ofEpochMilli(syncedAt),
     stepsToday = stepsToday,
     daily = BandDailyMetrics(
@@ -185,16 +233,22 @@ fun HealthSnapshotEntity.toModel(): BandHealthSnapshot {
         uvExposure = dailyUvExposure,
         cumulativeSinceReset = dailyIsCumulative,
     ).takeIf { it.hasData },
-    lastRun = run,
-    lastWorkout = workout,
-    lastSleep = sleep,
-    )
-}
+    lastRun = activitySummary(
+        runStartedAt, runEndedAt, runDuration, runDistance, runCalories, runAverageHeartRate, runMaximumHeartRate,
+    ),
+    lastWorkout = activitySummary(
+        workoutStartedAt, workoutEndedAt, workoutDuration, null, workoutCalories, workoutAverageHeartRate, workoutMaximumHeartRate,
+    ),
+    lastSleep = sleepSummary(
+        sleepStartedAt, sleepEndedAt, sleepDuration, sleepTimeAsleep, sleepTimesWokeUp, sleepCalories,
+        sleepRestingHeartRate, sleepTimeToFallAsleep,
+    ),
+)
 
 private fun BandActivitySummary.isValid() = durationMillis >= 30_000 && startedAt != null && endedAt != null && !endedAt.isBefore(startedAt)
 private fun BandSleepSummary.isValid() = durationMillis >= 60_000 && startedAt != null && endedAt != null && !endedAt.isBefore(startedAt)
 
-@Database(entities = [ProtocolPacketLog::class, HealthSnapshotEntity::class, HealthDailyEntity::class], version = 5, exportSchema = true)
+@Database(entities = [ProtocolPacketLog::class, HealthSnapshotEntity::class, HealthDailyEntity::class], version = 6, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun packetLogDao(): PacketLogDao
     abstract fun healthSnapshotDao(): HealthSnapshotDao
@@ -205,7 +259,7 @@ abstract class AppDatabase : RoomDatabase() {
             context,
             AppDatabase::class.java,
             "microband.db",
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6).build()
 
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -236,6 +290,20 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `health_snapshot` ADD COLUMN `dailyFlightsAscended` INTEGER")
                 db.execSQL("ALTER TABLE `health_snapshot` ADD COLUMN `dailyElevationGainCentimeters` INTEGER")
                 db.execSQL("ALTER TABLE `health_snapshot` ADD COLUMN `dailyUvExposure` INTEGER")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                listOf(
+                    "runStartedAt", "runEndedAt", "runDuration", "runDistance", "runCalories",
+                    "runAverageHeartRate", "runMaximumHeartRate", "workoutStartedAt", "workoutEndedAt",
+                    "workoutDuration", "workoutCalories", "workoutAverageHeartRate", "workoutMaximumHeartRate",
+                    "sleepStartedAt", "sleepEndedAt", "sleepDuration", "sleepTimeAsleep", "sleepTimesWokeUp",
+                    "sleepCalories", "sleepRestingHeartRate", "sleepTimeToFallAsleep",
+                ).forEach { column ->
+                    db.execSQL("ALTER TABLE `health_daily` ADD COLUMN `$column` INTEGER")
+                }
             }
         }
     }

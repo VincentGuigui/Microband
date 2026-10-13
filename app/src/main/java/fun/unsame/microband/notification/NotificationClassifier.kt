@@ -7,6 +7,9 @@ object NotificationClassifier {
     const val CALL_TYPE_ONGOING = 2
     const val CALL_TYPE_SCREENING = 3
 
+    fun isMediaPlayback(androidCategory: String?, hasMediaSession: Boolean): Boolean =
+        androidCategory == "transport" || hasMediaSession
+
     fun classify(
         packageName: String,
         sourceLabel: String,

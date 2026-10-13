@@ -80,6 +80,8 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Alarm
 import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ChevronLeft
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Call
@@ -138,6 +140,9 @@ import com.unsame.microband.band.oobe.BandOobeStep
 import com.unsame.microband.bluetooth.PairedDeviceOption
 import com.unsame.microband.data.ProtocolPacketLog
 import com.unsame.microband.data.HealthDailyEntity
+import com.unsame.microband.data.runSummary
+import com.unsame.microband.data.sleepSummary
+import com.unsame.microband.data.workoutSummary
 import com.unsame.microband.notification.NotificationAppInfo
 import androidx.core.graphics.drawable.toBitmap
 import java.time.LocalDate
@@ -187,9 +192,15 @@ fun MicrobandApp(
     onSetGeminiEnabled: (Boolean) -> Unit,
     onSaveGeminiKey: (String) -> Unit,
     onClearGeminiKey: () -> Unit,
+    onMessageShown: () -> Unit,
 ) {
     val snackbar = remember { SnackbarHostState() }
-    LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it) } }
+    LaunchedEffect(state.message) {
+        state.message?.let {
+            snackbar.showSnackbar(it)
+            onMessageShown()
+        }
+    }
 
     if (!state.permissions.allGranted || state.association == null) {
         Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
@@ -242,37 +253,37 @@ fun MicrobandApp(
                         Destination.Home -> HomeScreen(state, onConnect, onDisconnect, onInspect, onFinishSetup, onSyncClock, onRefreshHealth, onPairNewBand)
                         Destination.Health -> HealthScreen(state, onRefreshHealth)
                         Destination.Personalize -> PersonalizeScreen(
-                    state = state,
-                    onSetThemeColor = onSetThemeColor,
-                    onChooseWallpaper = onChooseWallpaper,
-                    onClearWallpaper = onClearWallpaper,
-                    onRefreshTiles = onRefreshTiles,
-                    onApplyTiles = onApplyTiles,
-                    modifier = Modifier,
-                )
+                            state = state,
+                            onSetThemeColor = onSetThemeColor,
+                            onChooseWallpaper = onChooseWallpaper,
+                            onClearWallpaper = onClearWallpaper,
+                            onRefreshTiles = onRefreshTiles,
+                            onApplyTiles = onApplyTiles,
+                            modifier = Modifier,
+                        )
                         Destination.Settings -> SettingsContainer(
-                    state = state,
-                    onSetProtocolLogging = onSetProtocolLogging,
-                    onOpenFirmwareArchive = onOpenFirmwareArchive,
-                    onChooseFirmwarePackage = onChooseFirmwarePackage,
-                    onStartFirmwareUpdate = onStartFirmwareUpdate,
-                    onConnect = onConnect,
-                    onDisconnect = onDisconnect,
-                    onInspect = onInspect,
-                    onClearLog = onClearLog,
-                    onRefresh = onRefresh,
-                    onOpenNotificationAccess = onOpenNotificationAccess,
-                    onSetNotificationPackage = onSetNotificationPackage,
-                    onSetAllNotifications = onSetAllNotifications,
-                    onSetMaskNotificationsWhenLocked = onSetMaskNotificationsWhenLocked,
-                    onSetEmailTilesEnabled = onSetEmailTilesEnabled,
-                    onSendTestNotification = onSendTestNotification,
-                    onOpenBatteryOptimization = onOpenBatteryOptimization,
-                    onSetGeminiEnabled = onSetGeminiEnabled,
-                    onSaveGeminiKey = onSaveGeminiKey,
-                    onClearGeminiKey = onClearGeminiKey,
-                    modifier = Modifier,
-                )
+                            state = state,
+                            onSetProtocolLogging = onSetProtocolLogging,
+                            onOpenFirmwareArchive = onOpenFirmwareArchive,
+                            onChooseFirmwarePackage = onChooseFirmwarePackage,
+                            onStartFirmwareUpdate = onStartFirmwareUpdate,
+                            onConnect = onConnect,
+                            onDisconnect = onDisconnect,
+                            onInspect = onInspect,
+                            onClearLog = onClearLog,
+                            onRefresh = onRefresh,
+                            onOpenNotificationAccess = onOpenNotificationAccess,
+                            onSetNotificationPackage = onSetNotificationPackage,
+                            onSetAllNotifications = onSetAllNotifications,
+                            onSetMaskNotificationsWhenLocked = onSetMaskNotificationsWhenLocked,
+                            onSetEmailTilesEnabled = onSetEmailTilesEnabled,
+                            onSendTestNotification = onSendTestNotification,
+                            onOpenBatteryOptimization = onOpenBatteryOptimization,
+                            onSetGeminiEnabled = onSetGeminiEnabled,
+                            onSaveGeminiKey = onSaveGeminiKey,
+                            onClearGeminiKey = onClearGeminiKey,
+                            modifier = Modifier,
+                        )
                     }
                 }
             }
@@ -501,49 +512,80 @@ private enum class HealthRange(val label: String, val days: Int) { Day("Day", 1)
 
 @Composable
 private fun HealthScreen(state: MicrobandUiState, onRefresh: () -> Unit, modifier: Modifier = Modifier) {
+    val today = LocalDate.now()
     var rangeOrdinal by rememberSaveable { mutableIntStateOf(HealthRange.Week.ordinal) }
-    var selectedDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
+    var selectedDate by rememberSaveable { mutableStateOf(today.toString()) }
     val range = HealthRange.entries[rangeOrdinal]
-    val history = remember(state.healthHistory, range) {
-        val oldest = LocalDate.now().minusDays((range.days - 1).toLong())
+    val history = remember(state.healthHistory, range, today) {
+        val oldest = today.minusDays((range.days - 1).toLong())
         state.healthHistory.filter { runCatching { LocalDate.parse(it.localDate) }.getOrNull()?.let { date -> !date.isBefore(oldest) } == true }.sortedBy { it.localDate }
     }
     val selectedDay = state.healthHistory.firstOrNull { it.localDate == selectedDate }
     val connected = state.connection is BandConnectionState.Connected
-    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item {
-            Text("Health", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
-        }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                HealthRange.entries.forEach { option ->
-                    if (range == option) Button({ rangeOrdinal = option.ordinal }, Modifier.weight(1f)) { Text(option.label) }
-                    else FilledTonalButton({ rangeOrdinal = option.ordinal }, Modifier.weight(1f)) { Text(option.label) }
+    val selectedLocalDate = runCatching { LocalDate.parse(selectedDate) }.getOrDefault(today)
+    Column(modifier.fillMaxSize()) {
+        DayNavigator(
+            date = selectedLocalDate,
+            today = today,
+            onPrevious = { selectedDate = selectedLocalDate.minusDays(1).toString() },
+            onNext = { selectedDate = selectedLocalDate.plusDays(1).coerceAtMost(today).toString() },
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
+        )
+        LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            item {
+                Text("Health", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+            }
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HealthRange.entries.forEach { option ->
+                        if (range == option) Button({ rangeOrdinal = option.ordinal }, Modifier.weight(1f)) { Text(option.label) }
+                        else FilledTonalButton({ rangeOrdinal = option.ordinal }, Modifier.weight(1f)) { Text(option.label) }
+                    }
                 }
             }
-        }
-        item { StepsChart(history, range, selectedDate) { selectedDate = it } }
-        item { DailyHealthCard(selectedDate, selectedDay) }
-        item {
-            Button(onClick = onRefresh, enabled = connected && !state.healthSyncInProgress, modifier = Modifier.fillMaxWidth()) {
-                Text(if (state.healthSyncInProgress) "Syncing…" else "Sync Band data")
+            item { StepsChart(history, range, today, selectedDate) { selectedDate = it } }
+            item { DailyHealthCard(selectedDate, selectedDay) }
+            item {
+                Button(onClick = onRefresh, enabled = connected && !state.healthSyncInProgress, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (state.healthSyncInProgress) "Syncing…" else "Sync Band data")
+                }
+                if (state.healthSyncInProgress) LinearProgressIndicator(Modifier.fillMaxWidth())
             }
-            if (state.healthSyncInProgress) LinearProgressIndicator(Modifier.fillMaxWidth())
-        }
-        item { ActivitySummaryCard("Latest run", state.healthSnapshot?.lastRun, showDistance = true) }
-        item { ActivitySummaryCard("Latest exercise", state.healthSnapshot?.lastWorkout, showDistance = false) }
-        item { SleepSummaryCard(state.healthSnapshot?.lastSleep) }
-        if (history.isEmpty()) item {
-            SectionCard("No trend data", "Connect the Band and sync.")
+            item { ActivitySummaryCard("Run", selectedDay?.runSummary(), showDistance = true) }
+            item { ActivitySummaryCard("Exercise", selectedDay?.workoutSummary(), showDistance = false) }
+            item { SleepSummaryCard(selectedDay?.sleepSummary()) }
+            if (history.isEmpty()) item {
+                SectionCard("No trend data", "Connect the Band and sync.")
+            }
         }
     }
 }
 
 @Composable
-private fun HealthValue(label: String, value: String?) {
-    Row(Modifier.fillMaxWidth()) {
-        Text(label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value ?: "Not available", fontWeight = FontWeight.SemiBold)
+private fun DayNavigator(
+    date: LocalDate,
+    today: LocalDate,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 3.dp,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onPrevious) { Icon(Icons.Rounded.ChevronLeft, "Previous day") }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(if (date == today) "Today" else date.format(DateTimeFormatter.ofPattern("EEEE")), fontWeight = FontWeight.SemiBold)
+                Text(date.format(DateTimeFormatter.ofPattern("MMM d, yyyy")), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            IconButton(onClick = onNext, enabled = date.isBefore(today)) { Icon(Icons.Rounded.ChevronRight, "Next day") }
+        }
     }
 }
 
@@ -551,11 +593,11 @@ private fun HealthValue(label: String, value: String?) {
 private fun StepsChart(
     history: List<HealthDailyEntity>,
     range: HealthRange,
+    today: LocalDate,
     selectedDate: String,
     onSelectDate: (String) -> Unit,
 ) {
-    val slots = remember(range) {
-        val today = LocalDate.now()
+    val slots = remember(range, today) {
         (range.days - 1 downTo 0).map { today.minusDays(it.toLong()) }
     }
     val byDate = remember(history) { history.associateBy { it.localDate } }
@@ -570,7 +612,7 @@ private fun StepsChart(
             Canvas(
                 Modifier.fillMaxWidth().height(150.dp).pointerInput(slots) {
                     detectTapGestures { offset ->
-                        val index = (offset.x / (size.width / slots.size)).toInt().coerceIn(0, slots.lastIndex)
+                        val index = (offset.x / (size.width.toFloat() / slots.size)).toInt().coerceIn(0, slots.lastIndex)
                         onSelectDate(slots[index].toString())
                     }
                 },
@@ -657,7 +699,7 @@ private fun ActivitySummaryCard(title: String, summary: BandActivitySummary?, sh
             if (summary != null) {
                 Text(durationText(summary.durationMillis), style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (showDistance) HealthMetric(Icons.Rounded.Straighten, "Distance", summary.distanceCentimeters?.let { String.format(Locale.US, "%.2f mi", it / 160_934.4) }, Modifier.weight(1f))
+                    if (showDistance) HealthMetric(Icons.Rounded.Straighten, "Distance", summary.distanceCentimeters?.let { String.format(Locale.US, "%.2f km", it / 100_000.0) }, Modifier.weight(1f))
                     HealthMetric(Icons.Rounded.LocalFireDepartment, "Calories", "${summary.calories} cal", Modifier.weight(1f))
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -675,7 +717,7 @@ private fun SleepSummaryCard(summary: BandSleepSummary?) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Rounded.Bedtime, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                Text("Latest sleep", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text("Sleep", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
             Text(summary?.endedAt?.let(::healthDate) ?: "No saved sleep found", color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (summary != null) {
@@ -697,7 +739,6 @@ private fun SleepSummaryCard(summary: BandSleepSummary?) {
                     HealthMetric(Icons.Rounded.MonitorHeart, "Resting HR", summary.restingHeartRate.takeIf { it > 0 }?.let { "$it bpm" }, Modifier.weight(1f))
                     HealthMetric(Icons.Rounded.LocalFireDepartment, "Calories", "${summary.calories} cal", Modifier.weight(1f))
                 }
-                HealthValue("Deep sleep", null)
                 Text("Sleep stages are not included in the Band summary currently available to Microband.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }

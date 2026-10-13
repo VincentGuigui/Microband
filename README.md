@@ -54,7 +54,7 @@ Microsoft Band 1 is not currently supported.
 - Inspects PCB, firmware, application, setup, and clock state.
 - Safely resumes and completes first-run Band 2 setup.
 - Synchronizes both UTC and displayed local time.
-- Forwards selected Android notifications into the Band's native Messages tile and sends phone-call lifecycle updates to its Calls tile, with persistent filters, duplicate suppression, rate limiting, locked-phone privacy, and automatic reconnection.
+- Forwards selected Android notifications into the Band's native Messages tile and sends phone-call lifecycle updates to its Calls tile, with persistent filters, duplicate suppression, rate limiting, full content delivery even while the phone is locked, and automatic reconnection.
 - Creates one custom Band tile per email app (Gmail, Outlook, or a generic envelope icon) and sends emails to it, following the Band SDK's tile-creation protocol; falls back to a pop-up when the Band has no free tile slot or the option is off.
 - Maintains the Band's separate reply/voice RFCOMM service, forwards Band replies through the originating Android notification's direct-reply action, and optionally routes Cortana audio or notification dictation through Gemini.
 - Reads daily steps, calories, distance, floors, elevation, and UV plus the latest run, exercise, and sleep summaries directly from the Band; daily readings build private week and month charts on the phone.

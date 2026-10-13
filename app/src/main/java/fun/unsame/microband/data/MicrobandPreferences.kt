@@ -18,7 +18,7 @@ class MicrobandPreferences(private val context: Context) {
     val manualDeviceAddress: Flow<String?> = context.dataStore.data.map { it[MANUAL_DEVICE_ADDRESS] }
     val protocolLogging: Flow<Boolean> = context.dataStore.data.map { it[PROTOCOL_LOGGING] ?: false }
     val allNotificationsEnabled: Flow<Boolean> = context.dataStore.data.map { it[ALL_NOTIFICATIONS_ENABLED] ?: true }
-    val maskNotificationsWhenLocked: Flow<Boolean> = context.dataStore.data.map { it[MASK_NOTIFICATIONS_WHEN_LOCKED] ?: true }
+    val maskNotificationsWhenLocked: Flow<Boolean> = context.dataStore.data.map { it[MASK_NOTIFICATIONS_WHEN_LOCKED] ?: false }
     val emailTilesEnabled: Flow<Boolean> = context.dataStore.data.map { it[EMAIL_TILES_ENABLED] ?: true }
     val disabledNotificationPackages: Flow<Set<String>> = context.dataStore.data.map { it[DISABLED_NOTIFICATION_PACKAGES] ?: emptySet() }
     val notificationActivity: Flow<Map<String, NotificationAppActivity>> = context.dataStore.data.map {

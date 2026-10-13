@@ -166,6 +166,8 @@ class MicrobandViewModel(
         connectionManager.connect(association.device)
     }
 
+    fun consumeMessage() = mutableState.update { it.copy(message = null) }
+
     fun disconnect() = connectionManager.disconnect()
 
     // Forgets which Band the app is set to use, so the pairing screen comes back up. The

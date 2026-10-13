@@ -1,7 +1,7 @@
 package com.unsame.microband.notification
 
-import android.app.Notification
 import android.app.KeyguardManager
+import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.unsame.microband.MicrobandApplication
@@ -41,6 +41,11 @@ class MicrobandNotificationListenerService : NotificationListenerService() {
     override fun onNotificationPosted(notification: StatusBarNotification?) {
         val posted = notification ?: return
         if (posted.packageName == packageName || posted.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
+        if (NotificationClassifier.isMediaPlayback(
+                posted.notification.category,
+                posted.notification.extras.containsKey(Notification.EXTRA_MEDIA_SESSION),
+            )
+        ) return
         val normalized = normalize(posted)
         val replyCandidates = posted.notification.actions.orEmpty().filter { action ->
             !action.remoteInputs.isNullOrEmpty() && action.actionIntent != null
@@ -76,7 +81,7 @@ class MicrobandNotificationListenerService : NotificationListenerService() {
                 normalized.copy(body = "Unlock your phone to read this notification")
             } else normalized
             val association = runCatching { app.associationManager.currentAssociation() }.getOrNull() ?: return@launch
-            app.connectionManager.forwardNotification(privateSafe, kind, association.device)
+            app.connectionManager.forwardNotification(normalized, kind, association.device)
         }
     }
 
